@@ -1,4 +1,4 @@
-# Welcome to the 2025 Code 4 Life Competition
+# Welcome to the 2025 Coding Movie Magic Software Engineering Competition
 
 # Code Submittal
 ## Create Branch
