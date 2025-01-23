@@ -1,10 +1,10 @@
-# Welcome to the 2025 Code 4 Life Competition
+# Welcome to the 2025 Coding Movie Magic Software Engineering Competition
 
 # Code Submittal (Can be used to share code and changes for duration of the project)
 ## Create Branch
-### Click the Branch button
+### 1. Click the Branch button
 ![Make Branch](images/GitComp_Branch.png?raw=true "Make Branch")
-### Click "New Branch"
+### 2. Click "New Branch"
 ![Make Branch](images/GitComp_Branch_2.png?raw=true "Make Branch")
 ### Enter the name of your school followed name of team separated by "_"
 - example: Moore_RabidVipers
