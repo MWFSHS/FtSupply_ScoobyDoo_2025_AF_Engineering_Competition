@@ -1,0 +1,148 @@
+#include <Servo.h>
+
+// Define button, buzzer, servo, and LED pins
+const int buttonPin = 2;  // Button input pin
+const int buzzerPin = 10; // Passive buzzer output pin
+const int ledPins[] = {3, 4, 5, 6, 7, 8}; // LED output pins
+const int motorPin = 9;   // Servo motor control pin
+
+Servo motor;
+
+// Debounce & state variables
+bool isPlaying = false; // Tracks play/pause state
+bool melodyPlaying = false; // Tracks melody play state
+int currentNoteIndex = 0; // Tracks current melody note
+unsigned long lastButtonPress = 0;
+const int debounceTime = 300;
+
+// Timing variables for LEDs, motor, and melody
+unsigned long previousMillisLED = 0;
+unsigned long previousMillisNote = 0;
+unsigned long previousMillisMotor = 0;
+const long motorRotateDuration = 7000; // 7 seconds per direction
+bool motorRotatingForward = true;
+
+const int NOTE_G4 = 392;
+const int NOTE_A4 = 440;
+const int NOTE_B4 = 495;
+const int NOTE_C4 = 262;
+const int NOTE_D4 = 294;
+const int NOTE_E4 = 330;
+const int NOTE_C4S = 277;
+const int NOTE_F4S = 370;
+const int NOTE_Db5 = 554;
+const int NOTE_D5 = 587;
+const int NOTE_C5 = 523;
+const int REST = 0;
+
+// Melody definition
+const int melody[] = {
+NOTE_B4, NOTE_B4, NOTE_A4, NOTE_A4, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_E4, //"Scooby Dooby Doo, where are you?"
+  NOTE_E4, NOTE_D4, NOTE_D4, NOTE_B4, NOTE_A4, NOTE_A4, NOTE_G4, //"We got some work to do now"
+  NOTE_B4, NOTE_B4, NOTE_A4, NOTE_A4, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_C5,//"Scooby Dooby Doo, where are you?"
+  NOTE_E4, NOTE_D4, NOTE_D4, NOTE_B4, NOTE_A4, NOTE_A4, NOTE_G4,//"We need some help from you now"
+  NOTE_B4, NOTE_B4, NOTE_A4, NOTE_A4, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_E4, //"C'mon Scooby Doo, I see you"
+  NOTE_E4, NOTE_D4, NOTE_D4, NOTE_D4, NOTE_B4, NOTE_B4, NOTE_A4, NOTE_B4, //"Pretendin' you've got a sliver"
+  NOTE_B4, NOTE_B4, NOTE_A4, NOTE_A4, NOTE_G4, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_C5, //"You're not foolin' me, 'cause I can see"
+  NOTE_E4, NOTE_D4, NOTE_D4, NOTE_B4, NOTE_B4, NOTE_A4, NOTE_G4, //"The way you shake and shiver"
+  NOTE_G4, NOTE_A4, NOTE_B4, NOTE_C5, NOTE_B4, NOTE_C5, NOTE_B4, NOTE_C5, NOTE_B4, NOTE_C5, //"You know we got a mystery to solve. 
+  NOTE_B4, NOTE_C5, NOTE_B4, NOTE_C5, NOTE_B4, NOTE_C5, NOTE_B4, NOTE_C5, NOTE_C5, NOTE_B4, //So Scooby Doo be ready for your act,"
+  NOTE_C5, REST, NOTE_C5, REST, NOTE_B4, //" don't hold back"
+  NOTE_G4, NOTE_A4, NOTE_B4, NOTE_C5, NOTE_B4, NOTE_C5, NOTE_B4, NOTE_C5, NOTE_B4, NOTE_C5,//"And Scooby Doo if you come through, 
+  NOTE_B4, NOTE_C5, NOTE_B4, NOTE_C5, NOTE_B4, NOTE_C5, NOTE_C5, NOTE_D5,//you're gonna have yourself a Scooby Snack"
+  NOTE_C5, REST, NOTE_Db5, REST, NOTE_D5,//"that's a fact"
+  NOTE_B4, NOTE_B4, NOTE_A4, NOTE_A4, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_E4,//"Scooby Dooby Doo, here are you"
+  NOTE_E4, NOTE_D4, NOTE_D4, NOTE_B4, NOTE_A4, NOTE_A4, NOTE_G4,//"You're ready and you're willing"
+  NOTE_B4, NOTE_B4, NOTE_A4, NOTE_A4, NOTE_G4, NOTE_A4, NOTE_B4, NOTE_E4,//"If we can count on you, Scooby Doo"
+  NOTE_E4, NOTE_D4, NOTE_D4, NOTE_B4, NOTE_A4, NOTE_A4, NOTE_G4,//"I know we'll catch that villain"
+};
+const int noteDurations[] = { 
+  250, 250, 250, 250, 750, 250, 500, 1000, 
+  250, 250, 500, 750, 250, 500, 1000,
+  250, 250, 250, 250, 750, 250, 500, 1000,
+  250, 250, 500, 750, 250, 500, 1000,
+  250, 250, 250, 250, 750, 250, 500, 1000, 
+  250, 250, 250, 250, 500, 500, 500, 1000, 
+  250, 250, 250, 250, 750, 250, 250, 500, 1000, 
+  250, 250, 500, 500, 500, 500, 1000, 
+  250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 
+  250, 250, 250, 250, 250, 250, 250, 250, 500, 1000,
+  250, 125, 250, 125, 1000,
+  250, 250, 250, 250, 250, 250, 250, 250, 250, 250, 
+  250, 250, 250, 250, 250, 250, 500, 1000,
+  250, 125,  250, 125, 1000,
+  250, 250, 250, 250, 750, 250, 500, 1000, 
+  250, 250, 500, 750, 250, 500, 1000,
+  250, 250, 250, 250, 750, 250, 500, 1000,
+  250, 250, 500, 750, 250, 500, 1000,
+};
+
+const int melodyLength = sizeof(melody) / sizeof(melody[0]);
+
+void setup() {
+    pinMode(buttonPin, INPUT_PULLUP);
+    pinMode(buzzerPin, OUTPUT);
+    for (int i = 0; i < 6; i++) pinMode(ledPins[i], OUTPUT);
+    motor.attach(motorPin);
+    motor.write(90); // Stop motor initially
+}
+
+void loop() {
+    checkButtonPress(); // Handles play/pause toggling of melody, motor, and LED blinking
+    if (isPlaying) {
+        playMelody(); // Play the melody when it's in "play" state
+        controlMotor (); // Control motor when in "play" state
+    } else {
+        stopMotor(); // Stop motor when paused
+        stopLEDs(); // Stop LEDs when paused
+    }
+    if (isPlaying) {
+        blinkLEDs(); // LED blinking will continue when in "play" state
+    }
+}
+
+void checkButtonPress() {
+    if (digitalRead(buttonPin) == LOW && millis() - lastButtonPress > debounceTime) {
+        isPlaying = !isPlaying; // Toggle play/pause for melody, motor, and LED blinking
+        if (!isPlaying) {
+            currentNoteIndex = 0; // Reset melody to start if paused
+        }
+        lastButtonPress = millis();
+    }
+}
+
+void playMelody() {
+    // Ensure the melody continues playing smoothly without any pauses
+    if (currentNoteIndex >= melodyLength) {
+        currentNoteIndex = 0; // Reset the melody index when it finishes
+    }
+
+    // Use millis to ensure there's no delay
+    unsigned long currentMillis = millis();
+    if (currentMillis - previousMillisNote >= noteDurations[currentNoteIndex]) {
+        previousMillisNote = currentMillis; // Update previousMillisNote to the current time
+        int note = melody[currentNoteIndex];
+        if (note > 0) {
+            tone(buzzerPin, note, noteDurations[currentNoteIndex]);
+        }
+        currentNoteIndex++; // Move to the next note
+    }
+}
+
+void blinkLEDs() {
+    unsigned long currentMillis = millis();
+    long blinkInterval = 500; // Set LED blink interval (independent of melody)
+
+    if (currentMillis - previousMillisLED >= blinkInterval) {
+        previousMillisLED = currentMillis;
+        static bool ledState = false;
+        ledState = !ledState;
+        for (int i = 0; i < 6; i++) {
+            digitalWrite(ledPins[i], ledState ? HIGH : LOW);
+        }
+    }
+}
+
+void stopLEDs() {
+    for (int i = 0; i < 6; i++) {
+        digitalWrite(
